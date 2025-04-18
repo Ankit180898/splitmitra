@@ -44,6 +44,15 @@ class HomeController extends GetxController {
     super.onClose();
   }
 
+  void changeTab(int index) {
+    currentIndex.value = index;
+    pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
   // Force a complete refresh of all data
   Future<void> forceRefreshAll() async {
     isLoading.value = true;
@@ -206,27 +215,27 @@ class HomeController extends GetxController {
     return '\$${amount.toStringAsFixed(2)}';
   }
 
-  // Change tab
-  void changeTab(int index) {
-    currentIndex.value = index;
-    pageController.animateToPage(
-      index,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
+  // // Change tab
+  // void changeTab(int index) {
+  //   currentIndex.value = index;
+  //   pageController.animateToPage(
+  //     index,
+  //     duration: const Duration(milliseconds: 300),
+  //     curve: Curves.easeInOut,
+  //   );
 
-    // Refresh data if navigating to the groups tab (index 1)
-    if (index == 1) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        try {
-          final groupController = Get.find<GroupController>();
-          groupController.fetchUserGroups();
-        } catch (e) {
-          debugPrint('Error refreshing groups: $e');
-        }
-      });
-    }
-  }
+  //   // Refresh data if navigating to the groups tab (index 1)
+  //   if (index == 1) {
+  //     WidgetsBinding.instance.addPostFrameCallback((_) {
+  //       try {
+  //         final groupController = Get.find<GroupController>();
+  //         groupController.fetchUserGroups();
+  //       } catch (e) {
+  //         debugPrint('Error refreshing groups: $e');
+  //       }
+  //     });
+  //   }
+  // }
 
   // Navigate to create expense
   void navigateToCreateExpense() {

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "861753072945",
+    "project_id": "splitmitra-c8c3a",
+    "storage_bucket": "splitmitra-c8c3a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:861753072945:android:162fdb5d1dfb46d4282410",
+        "android_client_info": {
+          "package_name": "com.example.splitmitra"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAnjYLb7niKQthnv9CeD3HX4-q15UsiZc0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

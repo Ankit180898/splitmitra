@@ -1,11 +1,20 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:splitmitra/app/data/datasources/remote/notification_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:get/get.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class SupabaseService extends GetxService {
   static SupabaseClient get client => Supabase.instance.client;
+
+  // Google Sign-In instance
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'https://www.googleapis.com/auth/userinfo.profile'],
+  );
+
+NotificationService get _notificationService => Get.find<NotificationService>();
 
   // Initialize Supabase
   static Future<void> initialize() async {
@@ -67,35 +76,35 @@ class SupabaseService extends GetxService {
   }
 
   // Sign in with Google
-  Future<void> signInWithGoogle() async {
+  Future<AuthResponse> signInWithGoogle() async {
     try {
-      // Better platform detection
-      final bool isIOS = defaultTargetPlatform == TargetPlatform.iOS;
-      final bool isAndroid = defaultTargetPlatform == TargetPlatform.android;
-      final bool isMobile = isIOS || isAndroid;
+      debugPrint('Starting Google Sign-In...');
 
-      // Get redirect URL from env, or use default deep link
-      final String? redirectUrl =
-          kIsWeb
-              ? null
-              : dotenv.env['GOOGLE_OAUTH_REDIRECT_URL'] ??
-                  'io.supabase.splitmitra://login-callback/';
-
-      debugPrint('Platform: ${defaultTargetPlatform.toString()}');
-      debugPrint('Using redirect URL for Google Sign-In: $redirectUrl');
-
-      // Use platform-specific approach
-      if (isIOS) {
-        await client.auth.signInWithOAuth(
-          OAuthProvider.google,
-          // On iOS, Supabase handles redirect internally
-        );
-      } else {
-        await client.auth.signInWithOAuth(
-          OAuthProvider.google,
-          redirectTo: isMobile ? redirectUrl : null,
-        );
+      // Sign in with Google
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        throw Exception('Google Sign-In cancelled by user');
       }
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      debugPrint('Google ID Token: ${googleAuth.idToken}');
+      debugPrint('Google Access Token: ${googleAuth.accessToken}');
+
+      // Authenticate with Supabase using the Google ID token
+      final response = await client.auth.signInWithIdToken(
+        provider: OAuthProvider.google,
+        idToken: googleAuth.idToken!,
+        accessToken: googleAuth.accessToken,
+      );
+
+      if (response.user == null) {
+        throw Exception('Failed to sign in with Google: No user returned');
+      }
+
+      debugPrint('Google Sign-In successful: ${response.user!.email}');
+      return response;
     } catch (e) {
       debugPrint('Detailed Google Sign-In error: ${e.toString()}');
       rethrow;
@@ -105,7 +114,8 @@ class SupabaseService extends GetxService {
   // Sign out
   Future<void> signOut() async {
     try {
-      await client.auth.signOut();
+      await _googleSignIn.signOut(); // Sign out from Google
+      await client.auth.signOut(); // Sign out from Supabase
     } catch (e) {
       debugPrint('Error signing out: $e');
       rethrow;
@@ -244,11 +254,55 @@ class SupabaseService extends GetxService {
     required String userId,
   }) async {
     try {
+      // First check if the user is already in the group
+      final existingMember =
+          await client
+              .from('group_members')
+              .select()
+              .eq('group_id', groupId)
+              .eq('user_id', userId)
+              .maybeSingle();
+
+      if (existingMember != null) {
+        // User is already a member
+        return;
+      }
+
+      // Add user to group
       await client.from('group_members').insert({
         'group_id': groupId,
         'user_id': userId,
         'joined_at': DateTime.now().toIso8601String(),
       });
+
+      // Fetch group details for notification
+      final groupData =
+          await client
+              .from('groups')
+              .select('name, created_by')
+              .eq('id', groupId)
+              .single();
+
+      // Get creator name for better notification
+      final creatorData =
+          await client
+              .from('profiles')
+              .select('full_name')
+              .eq('id', groupData['created_by'])
+              .single();
+
+      // Send notification with richer data
+      await _notificationService.sendNotificationToUser(
+        playerId: userId,
+        title: 'You\'ve been added to a group!',
+        body:
+            'You are now a member of "${groupData['name']}" by ${creatorData['full_name']}.',
+        data: {
+          'type': 'group_member_added',
+          'group_id': groupId,
+          'group_name': groupData['name'],
+        },
+      );
     } catch (e) {
       debugPrint('Error adding group member: $e');
       rethrow;
@@ -362,12 +416,10 @@ class SupabaseService extends GetxService {
       final session = currentSession;
       if (session == null) return;
 
-      // If session expires in the next 5 minutes (300 seconds), refresh it
       final expiresAt = session.expiresAt;
       if (expiresAt == null) return;
 
       final now = DateTime.now();
-      // Convert expiresAt from Unix timestamp (seconds since epoch) to DateTime
       final expiresAtDateTime = DateTime.fromMillisecondsSinceEpoch(
         expiresAt * 1000,
       );
@@ -391,7 +443,6 @@ class SupabaseService extends GetxService {
         throw Exception('User not authenticated');
       }
 
-      // Check if user already exists
       final existingUser =
           await client
               .from('users')
@@ -400,7 +451,6 @@ class SupabaseService extends GetxService {
               .maybeSingle();
 
       if (existingUser == null) {
-        // User doesn't exist in our users table, create them
         debugPrint('Creating user record in users table...');
 
         await client.from('users').upsert({

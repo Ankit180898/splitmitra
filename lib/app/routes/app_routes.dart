@@ -20,4 +20,7 @@ abstract class Routes {
 
   // Settings
   static const settings = '/settings';
+
+  // Notifications
+  static const notifications = '/notifications';
 }

@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:splitmitra/app/core/theme/app_text_styles.dart';
 import 'package:splitmitra/app/core/theme/color_schemes.dart';
-import 'package:splitmitra/app/modules/home/controller/home_controller.dart';
 import 'package:splitmitra/app/modules/auth/controller/auth_controller.dart';
-import 'package:splitmitra/app/modules/group/pages/groups_page.dart';
 import 'package:splitmitra/app/modules/auth/pages/profile_page.dart';
+import 'package:splitmitra/app/modules/group/pages/groups_page.dart';
+import 'package:splitmitra/app/modules/home/controller/home_controller.dart';
 import 'package:splitmitra/app/routes/app_routes.dart';
 
 class HomePage extends StatelessWidget {
@@ -13,27 +13,50 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GetBuilder<HomeController>(
-      init: HomeController(),
-      builder: (controller) {
-        return Scaffold(
-          body: PageView(
-            controller: controller.pageController,
-            physics: const NeverScrollableScrollPhysics(),
-            children: [
-              // Dashboard/Home Tab
-              _buildDashboardPage(context),
+        final HomeController controller = Get.put(HomeController());
 
-              // Groups Tab
-              const GroupsPage(),
-
-              // Profile Tab
-              const ProfilePage(),
-            ],
+    return Scaffold(
+      body: PageView(
+        controller: controller.pageController,
+        physics: const NeverScrollableScrollPhysics(),
+        children: const [
+          // Dashboard/Home Tab
+          DashboardTab(),
+          // Groups Tab
+          GroupsPage(),
+          // Profile Tab
+          ProfilePage(),
+        ],
+      ),
+      bottomNavigationBar: Obx(() => BottomNavigationBar(
+        currentIndex: controller.currentIndex.value,
+        onTap: controller.changeTab,
+        backgroundColor:
+            Get.isDarkMode ? AppColors.darkSurface : AppColors.lightSurface,
+        selectedItemColor: AppColors.primary,
+        unselectedItemColor:
+            Get.isDarkMode
+                ? AppColors.darkTextSecondary
+                : AppColors.lightTextSecondary,
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.dashboard_outlined),
+            activeIcon: Icon(Icons.dashboard),
+            label: 'Dashboard',
           ),
-          bottomNavigationBar: Obx(() => _buildBottomNavigationBar(controller)),
-        );
-      },
+          BottomNavigationBarItem(
+            icon: Icon(Icons.group_outlined),
+            activeIcon: Icon(Icons.group),
+            label: 'Groups',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+        ],
+      )),
     );
   }
 
@@ -68,8 +91,13 @@ class HomePage extends StatelessWidget {
       ],
     );
   }
+}
 
-  Widget _buildDashboardPage(BuildContext context) {
+class DashboardTab extends StatelessWidget {
+  const DashboardTab({super.key});
+
+  @override
+  Widget build(BuildContext context) {
     final authController = Get.find<AuthController>();
     final homeController = Get.find<HomeController>();
 
@@ -78,8 +106,8 @@ class HomePage extends StatelessWidget {
         title: const Text('Dashboard'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => homeController.forceRefreshAll(),
+            icon: const Icon(Icons.notifications),
+            onPressed: () => Get.toNamed(Routes.notifications),
           ),
         ],
       ),
@@ -109,7 +137,7 @@ class HomePage extends StatelessWidget {
               ),
               const SizedBox(height: 24),
 
-              // Summary Cards - Wrap in Obx to observe changes
+              // Summary Cards
               Obx(() => _buildSummaryCards(homeController)),
               const SizedBox(height: 24),
 
@@ -217,11 +245,9 @@ class HomePage extends StatelessWidget {
       itemBuilder: (context, index) {
         final expense = controller.recentExpenses[index];
 
-        // Get icon based on expense title
         IconData icon = Icons.receipt_long_outlined;
         Color backgroundColor = AppColors.primary;
 
-        // Simple logic to determine icon and color based on title
         final lowerTitle = expense.title.toLowerCase();
         if (lowerTitle.contains('food') ||
             lowerTitle.contains('lunch') ||
@@ -247,7 +273,6 @@ class HomePage extends StatelessWidget {
 
         return ListTile(
           onTap: () {
-            // Navigate to expense details
             Get.toNamed(Routes.expenseDetail, arguments: expense.id);
           },
           leading: CircleAvatar(

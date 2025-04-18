@@ -1,11 +1,13 @@
 import 'package:get/get.dart';
 import 'package:flutter/foundation.dart';
+import 'package:splitmitra/app/data/datasources/remote/notification_service.dart';
 import 'package:splitmitra/app/data/datasources/remote/supabase_service.dart';
 import 'package:splitmitra/app/data/models/group_model.dart';
 import 'package:splitmitra/app/data/models/user_model.dart';
 
 class GroupRepository {
   final SupabaseService supabaseService = Get.find<SupabaseService>();
+NotificationService get _notificationService => Get.find<NotificationService>();
 
   Future<List<GroupModel>> getUserGroups() async {
   try {
@@ -120,6 +122,34 @@ class GroupRepository {
       'user_id': userId,
       'joined_at': DateTime.now().toIso8601String(),
     });
+     // Fetch group details for notification
+      final groupsData =
+          await SupabaseService.client
+              .from('groups')
+              .select('name, created_by')
+              .eq('id', groupId)
+              .single();
+
+      // Get creator name for better notification
+      final creatorData =
+          await SupabaseService.client
+              .from('users')
+              .select('display_name')
+              .eq('id', groupData['created_by'])
+              .single();
+
+      // Send notification with richer data
+      await _notificationService.sendNotificationToUser(
+        playerId: userId,
+        title: 'You\'ve been added to a group!',
+        body:
+            'You are now a member of "${groupsData['name']}" by ${creatorData['full_name']}.',
+        data: {
+          'type': 'group_member_added',
+          'group_id': groupId,
+          'group_name': groupData['name'],
+        },
+      );
   } catch (e) {
     debugPrint('Error adding group member: $e');
     rethrow;

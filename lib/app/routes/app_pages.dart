@@ -1,4 +1,7 @@
 import 'package:get/get.dart';
+import 'package:splitmitra/app/modules/expense/pages/create_expense_page.dart';
+import 'package:splitmitra/app/modules/notifications/bindings/notifications_binding,.dart';
+import 'package:splitmitra/app/modules/notifications/pages/notification_page.dart';
 import 'package:splitmitra/app/routes/app_routes.dart';
 
 // Bindings
@@ -16,7 +19,6 @@ import 'package:splitmitra/app/modules/home/pages/home_page.dart';
 import 'package:splitmitra/app/modules/group/pages/groups_page.dart';
 import 'package:splitmitra/app/modules/group/pages/group_detail_page.dart';
 import 'package:splitmitra/app/modules/group/pages/create_group_page.dart';
-import 'package:splitmitra/app/modules/expense/pages/create_expense_page.dart';
 import 'package:splitmitra/app/modules/expense/pages/expense_detail_page.dart';
 import 'package:splitmitra/app/modules/auth/pages/splash_page.dart';
 
@@ -25,7 +27,7 @@ class AppPages {
     // Splash & Auth
     GetPage(
       name: Routes.splash,
-      page: () => const SplashPage(),
+      page: () => SplashPage(),
       binding: InitialBinding(),
     ),
     GetPage(
@@ -70,14 +72,16 @@ class AppPages {
 
     // Expense Pages
     GetPage(
-      name: Routes.createExpense,
-      page: () => const CreateExpensePage(),
-      binding: ExpenseBinding(),
-    ),
-    GetPage(
       name: Routes.expenseDetail,
       page: () => const ExpenseDetailPage(),
       binding: ExpenseBinding(),
+    ),
+    GetPage(name: Routes.createExpense, page: () => const CreateExpensePage()),
+
+    GetPage(
+      name: Routes.notifications,
+      page: () => NotificationPage(),
+      binding: NotificationsBinding(),
     ),
   ];
 }
