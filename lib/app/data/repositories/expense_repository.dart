@@ -25,9 +25,9 @@ class ExpenseRepository {
   }
 
   // Get expense by ID
+  // Get expense by ID
   Future<ExpenseModel> getExpenseById(String expenseId) async {
     try {
-      // Get expense with shares and user details
       final data =
           await SupabaseService.client
               .from('expenses')
@@ -36,6 +36,7 @@ class ExpenseRepository {
               )
               .eq('id', expenseId)
               .single();
+      debugPrint('Raw expense data: $data'); // Add this line
 
       return ExpenseModel.fromJson(data);
     } catch (e) {
@@ -57,15 +58,15 @@ class ExpenseRepository {
       if (title.trim().isEmpty) {
         throw Exception('Title cannot be empty');
       }
-      
+
       if (amount <= 0) {
         throw Exception('Amount must be greater than zero');
       }
-      
+
       if (shares.isEmpty) {
         throw Exception('No shares specified');
       }
-      
+
       final expenseData = await _supabaseService.createExpense(
         groupId: groupId,
         title: title,
@@ -92,15 +93,15 @@ class ExpenseRepository {
       if (title.trim().isEmpty) {
         throw Exception('Title cannot be empty');
       }
-      
+
       if (amount <= 0) {
         throw Exception('Amount must be greater than zero');
       }
-      
+
       if (shares.isEmpty) {
         throw Exception('No shares specified');
       }
-      
+
       try {
         // First update the expense record
         await SupabaseService.client
@@ -125,17 +126,22 @@ class ExpenseRepository {
         }
 
         // Insert all shares at once for better performance
-        final sharesToInsert = shares.entries.map((entry) => {
-          'expense_id': expenseId,
-          'user_id': entry.key,
-          'amount': entry.value,
-        }).toList();
-        
+        final sharesToInsert =
+            shares.entries
+                .map(
+                  (entry) => {
+                    'expense_id': expenseId,
+                    'user_id': entry.key,
+                    'amount': entry.value,
+                  },
+                )
+                .toList();
+
         await SupabaseService.client
             .from('expense_shares')
             .insert(sharesToInsert);
       } catch (e) {
-        throw e;
+        rethrow;
       }
 
       // Fetch the updated expense with shares
@@ -204,7 +210,7 @@ class ExpenseRepository {
       rethrow;
     }
   }
-  
+
   // Check if expense has settlements
   Future<bool> hasSettlements(String expenseId) async {
     try {
@@ -217,14 +223,14 @@ class ExpenseRepository {
             .select('id, metadata')
             .not('metadata', 'is', null)
             .eq('id', expenseId);
-            
+
         // If the metadata column exists and we got results, check it
         if (settlements.isNotEmpty) {
           for (var settlement in settlements) {
             var metadata = settlement['metadata'];
-            if (metadata != null && 
-                metadata is Map && 
-                metadata.containsKey('settles_expense_id') && 
+            if (metadata != null &&
+                metadata is Map &&
+                metadata.containsKey('settles_expense_id') &&
                 metadata['settles_expense_id'] == expenseId) {
               return true;
             }
@@ -250,7 +256,7 @@ class ExpenseRepository {
       if (hasSettlements) {
         throw Exception('Cannot delete an expense that has been settled');
       }
-      
+
       try {
         // First delete all shares
         await SupabaseService.client
@@ -264,7 +270,7 @@ class ExpenseRepository {
             .delete()
             .eq('id', expenseId);
       } catch (e) {
-        throw e;
+        rethrow;
       }
     } catch (e) {
       debugPrint('Error deleting expense: $e');
@@ -289,8 +295,8 @@ class ExpenseRepository {
         // Filter results manually to check if settlement exists
         for (var expense in data) {
           var metadata = expense['metadata'];
-          if (metadata != null && 
-              metadata is Map && 
+          if (metadata != null &&
+              metadata is Map &&
               metadata['settles_expense_id'] == originalExpenseId &&
               metadata['settled_by'] == userId) {
             return true;
